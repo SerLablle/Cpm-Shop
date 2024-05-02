@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cpm shop</title>
+    <title>Cpm prodavnica</title>
+    <link rel="icon" href="ikona.png" type="image/x-icon">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -25,16 +26,18 @@
         }
         form {
             margin-top: 20px;
+            display: none; /* Skrivanje forme po defaultu */
         }
         label {
             display: block;
             margin-bottom: 5px;
             color: #555;
-            font-weight: bold; /* Dodato */
+            font-weight: bold;
         }
         input[type="text"],
         input[type="number"],
-        input[type="file"] {
+        input[type="file"],
+        select {
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
@@ -46,24 +49,34 @@
             background-color: #007bff;
             color: #fff;
             border: none;
-            padding: 12px 20px;
+            padding: 8px 12px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
         }
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
+        .advertisement-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
         .advertisement {
-            margin-top: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
+            width: calc(50% - 10px); /* Računanje širine oglasa tako da budu jedan pored drugog */
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-sizing: border-box;
             position: relative;
+            text-align: center; /* Centriranje teksta */
         }
         .advertisement img {
             max-width: 100%;
             height: auto;
             border-radius: 5px;
+            margin-bottom: 10px; /* Dodato */
         }
         .advertisement h2 {
             margin-top: 0;
@@ -71,14 +84,12 @@
         }
         .advertisement p {
             color: #555;
+            margin-bottom: 5px; /* Dodato */
         }
-        .advertisement .info {
-            margin-top: 10px;
-        }
-        .remove-button {
+        .advertisement .remove-button {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 5px;
+            right: 5px;
             background-color: #ff3333;
             color: #fff;
             border: none;
@@ -87,13 +98,63 @@
             cursor: pointer;
             font-size: 14px;
         }
+
+        /* New CSS styles */
+        .create-ad-button, .settings-button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Oglasi za Parking</h1>
-        <button id="showFormButton">Napravi Oglas</button>
-        <form id="parkingForm" enctype="multipart/form-data" class="hide">
+        <h1>Oglasi za Cpm</h1>
+        <button id="createAdButton" class="create-ad-button">Napravi Oglas</button>
+        <button id="settingsButton" class="settings-button">Podešavanja</button>
+        <form id="parkingForm" enctype="multipart/form-data">
             <label for="carName">Ime Automobila:</label>
             <input type="text" id="carName" name="carName" required>
             
@@ -103,8 +164,11 @@
             <label for="carPrice">Cijena Automobila (u KM):</label>
             <input type="number" id="carPrice" name="carPrice" required>
 
-            <label for="carMileage">Kilometraža Automobila:</label> <!-- Dodato -->
-            <input type="number" id="carMileage" name="carMileage" required> <!-- Dodato -->
+            <label for="playerId">Igracev id:</label>
+            <input type="text" id="playerId" name="playerId" required>
+
+            <label for="carMileage">Kilometraža Automobila:</label>
+            <input type="number" id="carMileage" name="carMileage" required>
 
             <label for="carImage">Slika Automobila:</label>
             <input type="file" id="carImage" name="carImage" accept="image/*" required>
@@ -114,8 +178,19 @@
     </div>
 
     <div id="advertisementList" class="container">
-        <h1>Oglasi za shop</h1>
-        <!-- Oglas se dodaje dinamički putem JavaScript-a -->
+        <h1>Oglasi</h1>
+        <div class="advertisement-container"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Podešavanja</h2>
+            <p>Unesite kod:</p>
+            <input type="text" id="deleteCode">
+            <button id="deleteButton">Potvrdi</button>
+        </div>
     </div>
 
     <script>
@@ -163,7 +238,7 @@
 
         // Rendering oglasa
         function renderAdvertisement(advertisement, index) {
-            var advertisementList = document.getElementById('advertisementList');
+            var advertisementContainer = document.querySelector('.advertisement-container');
 
             var advertisementDiv = document.createElement('div');
             advertisementDiv.classList.add('advertisement');
@@ -180,50 +255,42 @@
             var p2 = document.createElement('p');
             p2.innerHTML = '<span>Cijena:</span> ' + advertisement.carPrice + ' KM';
 
-            var p3 = document.createElement('p');
+            var p3 = document.createElement('p'); // Dodato
             p3.innerHTML = '<span>Kilometraža:</span> ' + advertisement.carMileage; // Dodato
 
-            var removeButton = document.createElement('button');
-            removeButton.textContent = 'Ukloni Oglas';
-            removeButton.classList.add('remove-button');
-            removeButton.addEventListener('click', function() {
-                advertisementList.removeChild(advertisementDiv);
-                removeAdvertisement(index);
-            });
+            var p4 = document.createElement('p'); // Dodato
+            p4.innerHTML = '<span>Igračev ID:</span> ' + advertisement.playerId; // Dodato
 
             advertisementDiv.appendChild(image);
             advertisementDiv.appendChild(h2);
             advertisementDiv.appendChild(p1);
             advertisementDiv.appendChild(p2);
             advertisementDiv.appendChild(p3); // Dodato
-            advertisementDiv.appendChild(removeButton);
+            advertisementDiv.appendChild(p4); // Dodato
 
-            advertisementList.appendChild(advertisementDiv);
+            advertisementContainer.appendChild(advertisementDiv);
         }
 
         // Inicijalizacija
         document.addEventListener('DOMContentLoaded', function() {
             loadAdvertisements();
 
-            document.getElementById('showFormButton').addEventListener('click', function() {
-                var form = document.getElementById('parkingForm');
-                var button = document.getElementById('showFormButton');
-                if (form.classList.contains('hide')) {
-                    form.classList.remove('hide');
-                    button.textContent = 'Sakrij Formu';
-                } else {
-                    form.classList.add('hide');
-                    button.textContent = 'Napravi Oglas';
-                }
+            var createAdButton = document.getElementById('createAdButton');
+            var form = document.getElementById('parkingForm');
+
+            createAdButton.addEventListener('click', function() {
+                form.style.display = 'block'; // Prikazi formu kada se klikne na dugme Napravi Oglas
+                createAdButton.style.display = 'none'; // Skloni dugme Napravi Oglas
             });
 
-            document.getElementById('parkingForm').addEventListener('submit', function(event) {
+            form.addEventListener('submit', function(event) {
                 event.preventDefault();
 
                 var carName = document.getElementById('carName').value;
                 var instagram = document.getElementById('instagram').value;
                 var carPrice = document.getElementById('carPrice').value;
-                var carMileage = document.getElementById('carMileage').value; // Dodato
+                var playerId = document.getElementById('playerId').value;
+                var carMileage = document.getElementById('carMileage').value;
                 var carImage = document.getElementById('carImage').files[0];
 
                 var reader = new FileReader();
@@ -232,21 +299,50 @@
                         carName: carName,
                         instagram: instagram,
                         carPrice: carPrice,
-                        carMileage: carMileage, // Dodato
+                        playerId: playerId,
+                        carMileage: carMileage,
                         image: reader.result
                     };
 
                     saveAdvertisement(advertisement);
-                    renderAdvertisement(advertisement, localStorage.length);
+                    renderAdvertisement(advertisement);
 
-                    document.getElementById('parkingForm').reset();
-
-                    // Sakri formu nakon dodavanja oglasa
-                    document.getElementById('parkingForm').classList.add('hide');
-                    document.getElementById('showFormButton').textContent = 'Napravi Oglas';
+                    form.reset(); // Resetuj formu nakon dodavanja oglasa
+                    form.style.display = 'none'; // Skloni formu nakon dodavanja oglasa
+                    createAdButton.style.display = 'block'; // Prikazi dugme Napravi Oglas
                 };
                 reader.readAsDataURL(carImage);
             });
+
+            // Modal
+            var modal = document.getElementById('settingsModal');
+            var closeButton = document.getElementsByClassName('close')[0];
+            var deleteButton = document.getElementById('deleteButton');
+            var deleteCodeInput = document.getElementById('deleteCode');
+
+            settingsButton.onclick = function() {
+                modal.style.display = 'block';
+            }
+
+            closeButton.onclick = function() {
+                modal.style.display = 'none';
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+
+            deleteButton.onclick = function() {
+                var deleteCode = deleteCodeInput.value.trim();
+                if (deleteCode === '123456789') {
+                    localStorage.removeItem('advertisements');
+                    location.reload(); // Reload the page to clear advertisements
+                } else {
+                    alert('Uneseni kod nije ispravan.');
+                }
+            }
         });
     </script>
 </body>
